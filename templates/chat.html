@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <title>Chat</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/css/bootstrap.min.css" integrity="sha384-MCw98/SFnGE8fJT3GXwEOngsV7Zt27NXFoaoApmYm81iuXoPkFOJwJ8ERdknLPMO"
+    crossorigin="anonymous">
+</head>
+
+<body>
+  <main role="main" class="container">
+    <h1 class="mt-5">Chat App</h1>
+    <p class="lead">Type message below to send to everyone in the room.</p>
+
+    <ul id="messages"></ul>
+
+    <form id="chatbox">
+      <div class="form-group">
+        <textarea class="form-control" id="msg-textarea" rows="3"></textarea>
+      </div>
+      <button type="submit" class="btn btn-primary">Send</button>
+    </form>
+  </main>
+
+  <!-- Optional JavaScript -->
+  <!-- jQuery first, then Popper.js, then Bootstrap JS -->
+  <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js" integrity="sha384-q8i/X+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo"
+    crossorigin="anonymous"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.3/umd/popper.min.js" integrity="sha384-ZMP7rVo3mIykV+2+9J3UJ46jBk0WLaUAdn689aCwoqbBJiSnjAK/l8WvCWPIPm49"
+    crossorigin="anonymous"></script>
+  <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/js/bootstrap.min.js" integrity="sha384-ChfqqxuZUCnJSK3+MXmPNIyE6ZbWh2IMqE241rYiqJxyMiZ6OW/JmZQ5stwEULTy"
+    crossorigin="anonymous"></script>
+  <script>
+    $(function () {
+      var socket = null;
+      var msgBox = $("#msg-textarea");
+      var messages = $("#messages");
+      $("#chatbox").submit(function () {
+        if (!msgBox.val()) return false;
+        if (!socket) {
+          alert("Error: There is no socket connection.");
+          return false;
+        }
+        socket.send(msgBox.val());
+        msgBox.val("");
+        return false;
+      });
+      if (!window["WebSocket"]) {
+        alert("Error: Your browser does not support web sockets.")
+      } else {
+        socket = new WebSocket("ws://localhost:8080/room");
+        socket.onclose = function () {
+          alert("Connection has been closed.");
+        }
+        socket.onmessage = function (e) {
+          messages.append($("<li>").text(e.data));
+        }
+      }
+    });
+  </script>
+</body>
+
+</html>
