@@ -6,6 +6,8 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/stretchr/objx"
+
 	"github.com/stretchr/gomniauth"
 )
 
@@ -36,7 +38,7 @@ func (h *authHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	h.next.ServeHTTP(w, r)
 }
 
-// simply creates authHandler that wraps any other http.Handler
+// MustAuth Simply creates authHandler that wraps any other http.Handler
 func MustAuth(handler http.Handler) http.Handler {
 	return &authHandler{next: handler}
 }
@@ -63,21 +65,43 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		// get the invocation url where we need to redirect the user
 		// NOTE: we are not passing any state and options
-		loginUrl, err := provider.GetBeginAuthURL(nil, nil)
+		loginURL, err := provider.GetBeginAuthURL(nil, nil)
 		if err != nil {
 			http.Error(w, fmt.Sprintf("Error when trying to GetBeginAuthURL for %s:%s", provider, err), http.StatusInternalServerError)
 			return
 		}
 		// redirect the user's browser to the returned URL
-		w.Header().Set("Location", loginUrl)
+		w.Header().Set("Location", loginURL)
 		w.WriteHeader(http.StatusTemporaryRedirect)
 	case "callback":
-		log.Println("TODO handle callback for", provider)
+		provider, err := gomniauth.Provider(provider)
+		if err != nil {
+			http.Error(w, fmt.Sprintf("Error when trying to get provider %s: %s", provider, err), http.StatusBadRequest)
+			return
+		}
+		log.Println("Handling callback for", provider)
+		creds, err := provider.CompleteAuth(objx.MustFromURLQuery(r.URL.RawQuery))
+		if err != nil {
+			http.Error(w, fmt.Sprintf("Error when trying to complete auth for %s: %s", provider, err), http.StatusInternalServerError)
+			return
+		}
+		user, err := provider.GetUser(creds)
+		if err != nil {
+			http.Error(w, fmt.Sprintf("Error when trying to get user from %s: %s", provider, err), http.StatusInternalServerError)
+			return
+		}
+		authCookieValue := objx.New(map[string]interface{} {
+			"name": user.Name(),
+		}).MustBase64()
+		http.SetCookie(w, &http.Cookie{
+			Name:  "auth",
+			Value: authCookieValue,
+			Path:  "/"})
+		w.Header().Set("Location", "/chat")
+		w.WriteHeader(http.StatusTemporaryRedirect)
+
 	default:
 		w.WriteHeader(http.StatusNotFound)
 		fmt.Fprintf(w, "Auth action %s not supported", action)
 	}
 }
-
-// client ID: 04a74fec1a7a7978506f
-// client secrete: ce3b77f8b93db79fadeee53166385d5eeedd0681
