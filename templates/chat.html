@@ -13,7 +13,7 @@
 <body>
   <main role="main" class="container">
     <h1 class="mt-5">Chat App</h1>
-    <p class="lead">Type message below to send to everyone in the room.</p>
+    <p class="lead">{{.UserData.name}}, enter message below to send to everyone in the room.</p>
 
     <ul id="messages"></ul>
 
@@ -44,7 +44,7 @@
           alert("Error: There is no socket connection.");
           return false;
         }
-        socket.send(msgBox.val());
+        socket.send(JSON.stringify({"Message": msgBox.val()}));
         msgBox.val("");
         return false;
       });
@@ -56,7 +56,12 @@
           alert("Connection has been closed.");
         }
         socket.onmessage = function (e) {
-          messages.append($("<li>").text(e.data));
+          var msg = JSON.parse(e.data);
+          messages.append(
+            $("<li>").append(
+              $("<strong>").text(msg.Name + ": "),
+              $("<span>").text(msg.Message)
+            ));
         }
       }
     });
